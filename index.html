@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Altos Coturnos — Controle de Estoque</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --preto:     #1A1A18;
+  --oliva:     #6B6B3A;
+  --oliva-esc: #4A4A28;
+  --dourado:   #C8A84B;
+  --dourado-cl:#F0D98A;
+  --chumbo:    #3D3D3A;
+  --cinza:     #F2F1ED;
+  --borda:     #D3D1C7;
+  --branco:    #FAFAF8;
+  --vermelho:  #B03A2E;
+  --verm-bg:   #FDECEA;
+  --amarelo:   #7D5A00;
+  --amar-bg:   #FEF9EC;
+  --verde:     #1E6B45;
+  --verde-bg:  #EAF7F0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--preto);
+  color: var(--branco);
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--preto);
+  border-bottom: 1px solid rgba(200,168,75,0.25);
+  padding: 0 1.5rem;
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px;
+}
+.logo { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: .08em; color: var(--dourado); }
+.logo span { color: rgba(255,255,255,0.35); font-size: .7rem; font-family: 'DM Sans'; letter-spacing: .04em; display: block; margin-top: -4px; font-weight: 400; }
+.header-right { display: flex; align-items: center; gap: .75rem; }
+#btn-modo-edicao {
+  background: transparent; border: 1px solid rgba(200,168,75,0.4);
+  color: var(--dourado); padding: .35rem .9rem; border-radius: 4px;
+  font-family: 'DM Sans'; font-size: .8rem; cursor: pointer; transition: all .2s;
+}
+#btn-modo-edicao.ativo { background: var(--dourado); color: var(--preto); font-weight: 600; }
+#btn-pdf {
+  background: var(--oliva-esc); border: none; color: var(--dourado-cl);
+  padding: .35rem .9rem; border-radius: 4px; font-family: 'DM Sans';
+  font-size: .8rem; cursor: pointer; transition: background .2s;
+}
+#btn-pdf:hover { background: var(--oliva); }
+
+/* ── BANNER CRÍTICO ── */
+#banner-critico {
+  display: none; background: var(--vermelho); color: white;
+  text-align: center; padding: .6rem 1rem; font-size: .85rem; font-weight: 600;
+  animation: pulso 2s infinite;
+}
+@keyframes pulso { 0%,100%{opacity:1} 50%{opacity:.8} }
+
+/* ── MODAL SENHA ── */
+#modal-senha {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.75); z-index: 999;
+  align-items: center; justify-content: center;
+}
+#modal-senha.aberto { display: flex; }
+.modal-box {
+  background: #222220; border: 1px solid var(--dourado);
+  border-radius: 8px; padding: 2rem; width: 90%; max-width: 340px;
+  text-align: center;
+}
+.modal-box h3 { font-family: 'Bebas Neue'; font-size: 1.4rem; color: var(--dourado); margin-bottom: .5rem; }
+.modal-box p  { font-size: .85rem; color: rgba(255,255,255,.5); margin-bottom: 1.2rem; }
+.modal-box input {
+  width: 100%; padding: .7rem 1rem; border-radius: 4px;
+  border: 1px solid var(--borda); background: var(--preto);
+  color: white; font-family: 'DM Mono'; font-size: 1rem;
+  text-align: center; letter-spacing: .2em; margin-bottom: 1rem;
+}
+.modal-box input:focus { outline: none; border-color: var(--dourado); }
+.modal-box button {
+  width: 100%; padding: .75rem; background: var(--dourado);
+  color: var(--preto); border: none; border-radius: 4px;
+  font-family: 'DM Sans'; font-weight: 600; font-size: .95rem; cursor: pointer;
+}
+.modal-erro { color: var(--vermelho); font-size: .8rem; margin-top: .5rem; display: none; }
+
+/* ── LAYOUT PRINCIPAL ── */
+main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+
+/* ── FILTROS / TABS ── */
+.tabs { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.tab {
+  background: transparent; border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.45); padding: .4rem .9rem; border-radius: 20px;
+  font-family: 'DM Sans'; font-size: .8rem; cursor: pointer; transition: all .2s;
+}
+.tab.ativo { background: var(--dourado); border-color: var(--dourado); color: var(--preto); font-weight: 600; }
+.tab:hover:not(.ativo) { border-color: var(--dourado); color: var(--dourado); }
+
+/* ── CARDS DE FAMÍLIA ── */
+.familia-section { margin-bottom: 2rem; }
+.familia-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .6rem 1rem; background: var(--oliva-esc);
+  border-radius: 6px 6px 0 0; border: 1px solid var(--oliva);
+  border-bottom: none;
+}
+.familia-nome { font-family: 'Bebas Neue'; font-size: 1.1rem; letter-spacing: .06em; color: var(--dourado); }
+.familia-badge {
+  font-size: .75rem; padding: .2rem .6rem; border-radius: 20px;
+  font-weight: 600; background: rgba(0,0,0,.3); color: rgba(255,255,255,.5);
+}
+.familia-badge.tem-critico { background: var(--vermelho); color: white; }
+
+.numeros-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1px; background: var(--oliva);
+  border: 1px solid var(--oliva); border-top: none; border-radius: 0 0 6px 6px; overflow: hidden;
+}
+.num-card {
+  background: #222220; padding: .75rem .6rem;
+  display: flex; flex-direction: column; align-items: center; gap: .3rem;
+  transition: background .15s; position: relative;
+}
+.num-card.critico-zerado { background: rgba(176,58,46,.18); }
+.num-card.critico-pedir  { background: rgba(125,90,0,.15); }
+.num-card.ok             { background: #222220; }
+
+.num-label {
+  font-family: 'Bebas Neue'; font-size: 1.3rem; letter-spacing: .04em;
+  color: var(--dourado-cl); line-height: 1;
+}
+.num-estoque {
+  font-family: 'DM Mono'; font-size: 1.6rem; font-weight: 500;
+  line-height: 1; color: white;
+}
+.num-estoque.zero { color: var(--vermelho); }
+.num-ponto { font-size: .7rem; color: rgba(255,255,255,.35); }
+.num-status {
+  font-size: .65rem; font-weight: 600; padding: .15rem .45rem;
+  border-radius: 10px; letter-spacing: .03em;
+}
+.status-ok     { background: rgba(30,107,69,.3);  color: #5DD89A; }
+.status-pedir  { background: rgba(125,90,0,.4);   color: #F5C842; }
+.status-zerado { background: rgba(176,58,46,.4);  color: #F08070; }
+
+/* Controles de edição */
+.num-controles {
+  display: none; flex-direction: column; gap: .35rem;
+  width: 100%; align-items: center; margin-top: .25rem;
+}
+.modo-edicao .num-controles { display: flex; }
+.modo-edicao .num-ponto     { display: none; }
+
+.ctrl-row { display: flex; align-items: center; gap: .3rem; }
+.btn-ctrl {
+  width: 26px; height: 26px; border-radius: 4px; border: none;
+  font-size: 1rem; font-weight: 700; cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.btn-menos { background: rgba(176,58,46,.3); color: #F08070; }
+.btn-menos:hover { background: var(--vermelho); color: white; }
+.btn-mais  { background: rgba(30,107,69,.3);  color: #5DD89A; }
+.btn-mais:hover  { background: var(--verde);  color: white; }
+.input-qtd {
+  width: 42px; height: 26px; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15); border-radius: 4px;
+  color: white; font-family: 'DM Mono'; font-size: .8rem;
+  text-align: center; padding: 0;
+}
+.input-qtd:focus { outline: none; border-color: var(--dourado); }
+.btn-aplicar {
+  font-size: .65rem; padding: .2rem .5rem; border-radius: 3px; border: none;
+  background: var(--dourado); color: var(--preto); cursor: pointer;
+  font-family: 'DM Sans'; font-weight: 600;
+}
+
+/* ── PAINEL RESUMO ── */
+#painel-resumo {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: .75rem; margin-bottom: 1.5rem;
+}
+.resumo-card {
+  background: #222220; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px; padding: .75rem 1rem;
+}
+.resumo-card .r-val {
+  font-family: 'Bebas Neue'; font-size: 1.8rem; color: var(--dourado); line-height: 1;
+}
+.resumo-card .r-label { font-size: .75rem; color: rgba(255,255,255,.4); margin-top: 2px; }
+.resumo-card.alerta { border-color: var(--vermelho); }
+.resumo-card.alerta .r-val { color: #F08070; }
+
+/* ── HISTÓRICO ── */
+#historico-lista {
+  background: #222220; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px; overflow: hidden; margin-top: 1rem;
+}
+.hist-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .6rem 1rem; border-bottom: 1px solid rgba(255,255,255,.05);
+  font-size: .82rem;
+}
+.hist-row:last-child { border-bottom: none; }
+.hist-row .h-prod { color: rgba(255,255,255,.7); }
+.hist-row .h-qtd  { font-family: 'DM Mono'; font-weight: 500; }
+.hist-row .h-qtd.entrada { color: #5DD89A; }
+.hist-row .h-qtd.saida   { color: #F08070; }
+.hist-row .h-data { color: rgba(255,255,255,.3); font-size: .75rem; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--oliva-esc); color: var(--dourado-cl);
+  padding: .6rem 1.4rem; border-radius: 20px; font-size: .85rem; font-weight: 500;
+  opacity: 0; transition: all .3s; pointer-events: none; z-index: 9999;
+  border: 1px solid var(--oliva); white-space: nowrap;
+}
+#toast.visivel { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── SEÇÃO HEADER ── */
+.secao-titulo {
+  font-family: 'Bebas Neue'; font-size: 1rem; letter-spacing: .1em;
+  color: rgba(255,255,255,.3); margin: 1.5rem 0 .75rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.secao-titulo::after {
+  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.08);
+}
+
+/* ── MODAL PEDIDO PDF ── */
+#modal-pedido {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.8); z-index: 998;
+  align-items: flex-start; justify-content: center;
+  overflow-y: auto; padding: 2rem 1rem;
+}
+#modal-pedido.aberto { display: flex; }
+.pedido-box {
+  background: #1E1E1C; border: 1px solid var(--oliva);
+  border-radius: 8px; width: 100%; max-width: 680px;
+  padding: 1.5rem;
+}
+.pedido-box h2 { font-family: 'Bebas Neue'; font-size: 1.6rem; color: var(--dourado); margin-bottom: .25rem; }
+.pedido-box p  { font-size: .85rem; color: rgba(255,255,255,.4); margin-bottom: 1.25rem; }
+.pedido-secao-titulo {
+  font-size: .7rem; font-weight: 600; letter-spacing: .1em;
+  color: var(--dourado); text-transform: uppercase;
+  padding: .4rem .75rem; background: var(--oliva-esc);
+  border-radius: 4px; margin-bottom: .5rem; margin-top: 1rem;
+}
+.pedido-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .45rem .75rem; font-size: .85rem;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.pedido-item:last-child { border-bottom: none; }
+.pedido-item .pi-nome { color: rgba(255,255,255,.75); }
+.pedido-item .pi-qtd  { font-family: 'DM Mono'; font-weight: 600; color: var(--dourado-cl); }
+.pedido-item.zerado .pi-nome { color: #F08070; }
+.pedido-total {
+  font-weight: 600; font-size: .9rem; padding: .6rem .75rem;
+  background: rgba(200,168,75,.1); border-radius: 4px; margin-top: .5rem;
+  display: flex; justify-content: space-between; color: var(--dourado-cl);
+}
+.pedido-aviso {
+  font-size: .8rem; color: #F5C842; padding: .5rem .75rem;
+  background: rgba(125,90,0,.2); border-radius: 4px; margin-top: .5rem;
+}
+.pedido-btns { display: flex; gap: .75rem; margin-top: 1.25rem; }
+.pedido-btns button {
+  flex: 1; padding: .7rem; border-radius: 4px; font-family: 'DM Sans';
+  font-size: .9rem; font-weight: 600; cursor: pointer; border: none;
+}
+#btn-imprimir { background: var(--dourado); color: var(--preto); }
+#btn-fechar-pedido { background: rgba(255,255,255,.08); color: rgba(255,255,255,.6); }
+
+@media (max-width: 480px) {
+  .numeros-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+  .num-estoque  { font-size: 1.35rem; }
+}
+
+@media print {
+  body { background: white; color: black; }
+  header, .tabs, #banner-critico, #btn-pdf, #btn-modo-edicao { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="banner-critico">🔴 ATENÇÃO: há produtos zerados ou críticos! Verifique antes de continuar vendendo.</div>
+
+<header>
+  <div class="logo">
+    ALTOS COTURNOS
+    <span>CONTROLE DE ESTOQUE</span>
+  </div>
+  <div class="header-right">
+    <button id="btn-pdf" onclick="abrirModalPedido()">📋 Lista de Pedido</button>
+    <button id="btn-modo-edicao" onclick="toggleEdicao()">✏️ Editar</button>
+  </div>
+</header>
+
+<!-- Modal senha -->
+<div id="modal-senha">
+  <div class="modal-box">
+    <h3>MODO EDIÇÃO</h3>
+    <p>Digite a senha para editar o estoque</p>
+    <input type="password" id="input-senha" placeholder="••••••" maxlength="20"
+      onkeydown="if(event.key==='Enter')verificarSenha()">
+    <button onclick="verificarSenha()">ENTRAR</button>
+    <p class="modal-erro" id="erro-senha">Senha incorreta</p>
+  </div>
+</div>
+
+<!-- Modal lista de pedido -->
+<div id="modal-pedido">
+  <div class="pedido-box">
+    <h2>Lista de Pedido</h2>
+    <p>Itens zerados ou abaixo do ponto de reposição · gerado agora</p>
+    <div id="conteudo-pedido"></div>
+    <div class="pedido-btns">
+      <button id="btn-imprimir" onclick="imprimirPedido()">🖨️ Imprimir / Salvar PDF</button>
+      <button id="btn-fechar-pedido" onclick="fecharModalPedido()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div id="painel-resumo"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="conteudo"></div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DADOS INICIAIS — estoque baseado nos dados reais
+// ═══════════════════════════════════════════════════════
+const SENHA = "altos2026";
+
+const PRAZO = { tradicional: 28, producao: 42 };
+const MARGEM = 1.20;
+const DIAS_TOTAL = 141;
+const MIN_PRODUCAO = 15;
+
+// Ponto de reposição pré-calculado por SKU (media_dia * prazo * 1.20, min 1)
+// Qtd a pedir (media_dia * (prazo+30), min 1)
+const FAMILIAS_DEF = [
+  // TRADICIONAIS
+  {
+    id: 'calfesa-cz', nome: 'Calfesa Extraleve', var: 'Com Zíper', tipo: 'tradicional',
+    nums: [
+      {n:36,ponto:1,pedido:1},{n:37,ponto:2,pedido:3},{n:38,ponto:1,pedido:2},
+      {n:39,ponto:4,pedido:7},{n:40,ponto:6,pedido:10},{n:41,ponto:8,pedido:13},
+      {n:42,ponto:7,pedido:13},{n:43,ponto:5,pedido:8},{n:44,ponto:3,pedido:5},{n:45,ponto:1,pedido:2}
+    ]
+  },
+  {
+    id: 'calfesa-sz', nome: 'Calfesa Extraleve', var: 'Sem Zíper', tipo: 'tradicional',
+    nums: [
+      {n:36,ponto:1,pedido:1},{n:37,ponto:1,pedido:2},{n:38,ponto:2,pedido:4},
+      {n:39,ponto:3,pedido:6},{n:40,ponto:6,pedido:10},{n:41,ponto:9,pedido:16},
+      {n:42,ponto:8,pedido:14},{n:43,ponto:5,pedido:9},{n:44,ponto:2,pedido:4},{n:45,ponto:2,pedido:3}
+    ]
+  },
+  {
+    id: 'troller-cz', nome: 'Atalaia Troller', var: 'Com Zíper', tipo: 'tradicional',
+    nums: [
+      {n:36,ponto:1,pedido:2},{n:37,ponto:1,pedido:1},{n:38,ponto:1,pedido:2},
+      {n:39,ponto:1,pedido:2},{n:40,ponto:2,pedido:3},{n:41,ponto:1,pedido:2},
+      {n:42,ponto:2,pedido:4},{n:43,ponto:3,pedido:5},{n:44,ponto:1,pedido:2},{n:45,ponto:1,pedido:1}
+    ]
+  },
+  {
+    id: 'troller-sz', nome: 'Atalaia Troller', var: 'Sem Zíper', tipo: 'tradicional',
+    nums: [
+      {n:36,ponto:1,pedido:1},{n:37,ponto:1,pedido:2},{n:38,ponto:1,pedido:2},
+      {n:39,ponto:2,pedido:3},{n:40,ponto:3,pedido:5},{n:41,ponto:3,pedido:5},
+      {n:42,ponto:2,pedido:4},{n:43,ponto:3,pedido:5},{n:44,ponto:1,pedido:2},{n:45,ponto:1,pedido:2}
+    ]
+  },
+  {
+    id: 'extraleve-cz', nome: 'Atalaia Extraleve', var: 'Com Zíper', tipo: 'tradicional',
+    nums: [
+      {n:39,ponto:1,pedido:2},{n:40,ponto:1,pedido:1},{n:41,ponto:1,pedido:2},
+      {n:42,ponto:1,pedido:1},{n:43,ponto:1,pedido:1},{n:44,ponto:1,pedido:1},{n:45,ponto:1,pedido:1}
+    ]
+  },
+  {
+    id: 'extraleve-sz', nome: 'Atalaia Extraleve', var: 'Sem Zíper', tipo: 'tradicional',
+    nums: [
+      {n:39,ponto:1,pedido:1},{n:40,ponto:1,pedido:1},{n:41,ponto:2,pedido:3},
+      {n:42,ponto:1,pedido:1},{n:43,ponto:1,pedido:2},{n:44,ponto:1,pedido:1},{n:45,ponto:1,pedido:1}
+    ]
+  },
+  {
+    id: 'ultraleve-cz', nome: 'Atalaia Ultraleve', var: 'Com Zíper', tipo: 'tradicional',
+    nums: [
+      {n:40,ponto:1,pedido:2},{n:41,ponto:1,pedido:2},{n:42,ponto:3,pedido:5},
+      {n:43,ponto:1,pedido:1},{n:44,ponto:1,pedido:1},{n:45,ponto:1,pedido:1}
+    ]
+  },
+  {
+    id: 'ultraleve-sz', nome: 'Atalaia Ultraleve', var: 'Sem Zíper', tipo: 'tradicional',
+    nums: [
+      {n:40,ponto:1,pedido:2},{n:41,ponto:2,pedido:3},{n:42,ponto:1,pedido:2},
+      {n:43,ponto:2,pedido:3},{n:44,ponto:1,pedido:1},{n:45,ponto:1,pedido:2}
+    ]
+  },
+  // PRODUÇÃO
+  {
+    id: 'raptor-cz', nome: 'Calfesa Raptor', var: 'Com Zíper', tipo: 'producao',
+    nums: [
+      {n:40,ponto:1,pedido:2},{n:41,ponto:1,pedido:2},{n:42,ponto:1,pedido:1},
+      {n:43,ponto:1,pedido:2},{n:44,ponto:1,pedido:1}
+    ]
+  },
+  {
+    id: 'raptor-sz', nome: 'Calfesa Raptor', var: 'Sem Zíper', tipo: 'producao',
+    nums: [
+      {n:40,ponto:1,pedido:1},{n:41,ponto:1,pedido:1},{n:42,ponto:1,pedido:2},
+      {n:43,ponto:1,pedido:1},{n:44,ponto:1,pedido:1}
+    ]
+  },
+  {
+    id: 'coyote-cz', nome: 'Calfesa Coyote', var: 'Com Zíper', tipo: 'producao',
+    nums: [
+      {n:39,ponto:1,pedido:2},{n:40,ponto:3,pedido:4},{n:41,ponto:4,pedido:5},
+      {n:42,ponto:3,pedido:4},{n:43,ponto:2,pedido:3},{n:44,ponto:1,pedido:2},{n:45,ponto:1,pedido:2}
+    ]
+  },
+  {
+    id: 'coyote-sz', nome: 'Calfesa Coyote', var: 'Sem Zíper', tipo: 'producao',
+    nums: [
+      {n:39,ponto:2,pedido:3},{n:40,ponto:3,pedido:4},{n:41,ponto:3,pedido:4},
+      {n:42,ponto:4,pedido:5},{n:43,ponto:3,pedido:4},{n:44,ponto:1,pedido:1},{n:45,ponto:1,pedido:1}
+    ]
+  },
+  {
+    id: 'tcoyote-sz', nome: 'Troller Coyote', var: 'Sem Zíper', tipo: 'producao',
+    nums: [
+      {n:39,ponto:1,pedido:2},{n:40,ponto:1,pedido:2},{n:41,ponto:1,pedido:2},
+      {n:42,ponto:1,pedido:2},{n:43,ponto:1,pedido:2},{n:44,ponto:1,pedido:1},{n:45,ponto:1,pedido:1}
+    ]
+  },
+];
+
+// Estoque inicial (do levantamento)
+const ESTOQUE_INICIAL = {
+  'calfesa-cz':   {36:3,37:3,38:4,39:9,40:20,41:19,42:13,43:9,44:3,45:4},
+  'calfesa-sz':   {36:3,37:3,38:3,39:14,40:18,41:19,42:17,43:7,44:5,45:5},
+  'troller-cz':   {36:0,37:1,38:1,39:4,40:0,41:2,42:3,43:3,44:0,45:1},
+  'troller-sz':   {36:2,37:2,38:2,39:3,40:1,41:3,42:3,43:3,44:2,45:2},
+  'extraleve-cz': {39:2,40:2,41:2,42:2,43:3,44:4,45:2},
+  'extraleve-sz': {39:1,40:3,41:2,42:3,43:3,44:2,45:4},
+  'ultraleve-cz': {40:3,41:2,42:1,43:2,44:3,45:4},
+  'ultraleve-sz': {40:2,41:3,42:2,43:3,44:1,45:3},
+  'raptor-cz':    {40:2,41:0,42:1,43:3,44:2},
+  'raptor-sz':    {40:3,41:4,42:3,43:2,44:2},
+  'coyote-cz':    {39:1,40:3,41:1,42:2,43:3,44:2,45:2},
+  'coyote-sz':    {39:2,40:3,41:1,42:3,43:3,44:2,45:2},
+  'tcoyote-sz':   {39:0,40:0,41:0,42:0,43:0,44:1,45:0},
+};
+
+// ═══════════════════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════════════════
+let modoEdicao = false;
+let filtroAtivo = 'todos';
+let historico = [];
+
+function carregar(chave, def) {
+  try { const v = localStorage.getItem(chave); return v ? JSON.parse(v) : def; }
+  catch { return def; }
+}
+function salvar(chave, val) {
+  try { localStorage.setItem(chave, JSON.stringify(val)); } catch {}
+}
+
+let estoque = carregar('ac_estoque', JSON.parse(JSON.stringify(ESTOQUE_INICIAL)));
+historico   = carregar('ac_historico', []);
+
+// ═══════════════════════════════════════════════════════
+// CÁLCULO DE STATUS
+// ═══════════════════════════════════════════════════════
+function status(famId, num) {
+  const fam = FAMILIAS_DEF.find(f => f.id === famId);
+  const def = fam.nums.find(x => x.n === num);
+  const est = (estoque[famId] || {})[num] || 0;
+  if (est === 0)         return 'zerado';
+  if (est <= def.ponto)  return 'pedir';
+  return 'ok';
+}
+
+function temCritico(famId) {
+  const fam = FAMILIAS_DEF.find(f => f.id === famId);
+  return fam.nums.some(x => {
+    const s = status(famId, x.n);
+    return s === 'zerado' || s === 'pedir';
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+function render() {
+  renderResumo();
+  renderTabs();
+  renderConteudo();
+  atualizarBanner();
+}
+
+function renderResumo() {
+  let totalPares = 0, totalZerados = 0, totalPedir = 0, totalOk = 0;
+  FAMILIAS_DEF.forEach(fam => {
+    fam.nums.forEach(x => {
+      const est = (estoque[fam.id] || {})[x.n] || 0;
+      const s   = status(fam.id, x.n);
+      totalPares += est;
+      if (s === 'zerado') totalZerados++;
+      else if (s === 'pedir') totalPedir++;
+      else totalOk++;
+    });
+  });
+  document.getElementById('painel-resumo').innerHTML = `
+    <div class="resumo-card"><div class="r-val">${totalPares}</div><div class="r-label">Pares em estoque</div></div>
+    <div class="resumo-card ${totalZerados > 0 ? 'alerta' : ''}">
+      <div class="r-val">${totalZerados}</div><div class="r-label">Numerações zeradas</div>
+    </div>
+    <div class="resumo-card ${totalPedir > 0 ? 'alerta' : ''}">
+      <div class="r-val">${totalPedir}</div><div class="r-label">Precisam de pedido</div>
+    </div>
+    <div class="resumo-card"><div class="r-val">${totalOk}</div><div class="r-label">Numerações OK</div></div>
+  `;
+}
+
+function renderTabs() {
+  const tabs = [
+    {id:'todos',   label:'Todos'},
+    {id:'criticos',label:'⚠ Críticos'},
+    {id:'trad',    label:'Tradicionais'},
+    {id:'prod',    label:'Produção'},
+  ];
+  document.getElementById('tabs').innerHTML = tabs.map(t =>
+    `<button class="tab ${filtroAtivo===t.id?'ativo':''}" onclick="setFiltro('${t.id}')">${t.label}</button>`
+  ).join('');
+}
+
+function setFiltro(f) { filtroAtivo = f; render(); }
+
+function renderConteudo() {
+  let familias = FAMILIAS_DEF;
+  if (filtroAtivo === 'trad')    familias = familias.filter(f => f.tipo === 'tradicional');
+  if (filtroAtivo === 'prod')    familias = familias.filter(f => f.tipo === 'producao');
+  if (filtroAtivo === 'criticos') familias = familias.filter(f => temCritico(f.id));
+
+  let html = '';
+
+  if (filtroAtivo === 'trad' || filtroAtivo === 'todos') {
+    html += '<div class="secao-titulo">Coturnos Tradicionais · Prazo 20 dias úteis</div>';
+    familias.filter(f => f.tipo === 'tradicional').forEach(f => { html += renderFamilia(f); });
+  }
+  if (filtroAtivo === 'prod' || filtroAtivo === 'todos') {
+    html += '<div class="secao-titulo">Coturnos de Produção · Prazo 30 dias úteis · Mínimo 15 pares/modelo</div>';
+    familias.filter(f => f.tipo === 'producao').forEach(f => { html += renderFamilia(f); });
+  }
+  if (filtroAtivo === 'criticos') {
+    html += '<div class="secao-titulo">Itens críticos</div>';
+    familias.forEach(f => { html += renderFamilia(f); });
+  }
+
+  document.getElementById('conteudo').innerHTML = html || '<p style="color:rgba(255,255,255,.3);padding:2rem;text-align:center">Nenhum item crítico no momento ✅</p>';
+}
+
+function renderFamilia(fam) {
+  const critico = temCritico(fam.id);
+  const badgeTxt = critico ? 'ATENÇÃO' : 'OK';
+  return `
+  <div class="familia-section">
+    <div class="familia-header">
+      <span class="familia-nome">${fam.nome} <span style="font-size:.75rem;opacity:.6;font-family:'DM Sans'">${fam.var}</span></span>
+      <span class="familia-badge ${critico?'tem-critico':''}">${badgeTxt}</span>
+    </div>
+    <div class="numeros-grid">
+      ${fam.nums.map(x => renderNumCard(fam, x)).join('')}
+    </div>
+  </div>`;
+}
+
+function renderNumCard(fam, x) {
+  const est = (estoque[fam.id] || {})[x.n] || 0;
+  const s   = status(fam.id, x.n);
+  const cls = s === 'zerado' ? 'critico-zerado' : s === 'pedir' ? 'critico-pedir' : 'ok';
+  const estCls = est === 0 ? 'zero' : '';
+  const stLabels = {zerado:'ZERADO', pedir:'PEDIR JÁ', ok:'OK'};
+  const stCls    = {zerado:'status-zerado', pedir:'status-pedir', ok:'status-ok'};
+  return `
+  <div class="num-card ${cls}" id="card-${fam.id}-${x.n}">
+    <span class="num-label">N${x.n}</span>
+    <span class="num-estoque ${estCls}" id="est-${fam.id}-${x.n}">${est}</span>
+    <span class="num-status ${stCls[s]}">${stLabels[s]}</span>
+    <span class="num-ponto">pedir ≤ ${x.ponto}</span>
+    <div class="num-controles">
+      <div class="ctrl-row">
+        <button class="btn-ctrl btn-menos" onclick="ajustar('${fam.id}',${x.n},-1)">−</button>
+        <input class="input-qtd" type="number" id="inp-${fam.id}-${x.n}" value="1" min="1" max="999">
+        <button class="btn-ctrl btn-mais" onclick="ajustar('${fam.id}',${x.n},+1)">+</button>
+      </div>
+      <div class="ctrl-row" style="gap:.3rem">
+        <button class="btn-aplicar" onclick="aplicarQtd('${fam.id}',${x.n},'saida')">− Saída</button>
+        <button class="btn-aplicar" style="background:var(--verde);color:white;" onclick="aplicarQtd('${fam.id}',${x.n},'entrada')">+ Entrada</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function atualizarBanner() {
+  const temAlerta = FAMILIAS_DEF.some(f => temCritico(f.id));
+  document.getElementById('banner-critico').style.display = temAlerta ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════
+// EDIÇÃO
+// ═══════════════════════════════════════════════════════
+function toggleEdicao() {
+  if (!modoEdicao) {
+    document.getElementById('modal-senha').classList.add('aberto');
+    document.getElementById('input-senha').focus();
+  } else {
+    modoEdicao = false;
+    document.body.classList.remove('modo-edicao');
+    document.getElementById('btn-modo-edicao').classList.remove('ativo');
+    document.getElementById('btn-modo-edicao').textContent = '✏️ Editar';
+    toast('Modo edição desativado');
+  }
+}
+
+function verificarSenha() {
+  const v = document.getElementById('input-senha').value;
+  if (v === SENHA) {
+    document.getElementById('modal-senha').classList.remove('aberto');
+    document.getElementById('input-senha').value = '';
+    document.getElementById('erro-senha').style.display = 'none';
+    modoEdicao = true;
+    document.body.classList.add('modo-edicao');
+    document.getElementById('btn-modo-edicao').classList.add('ativo');
+    document.getElementById('btn-modo-edicao').textContent = '🔒 Sair da Edição';
+    toast('Modo edição ativado');
+  } else {
+    document.getElementById('erro-senha').style.display = 'block';
+    document.getElementById('input-senha').value = '';
+    document.getElementById('input-senha').focus();
+  }
+}
+
+function ajustar(famId, num, delta) {
+  if (!estoque[famId]) estoque[famId] = {};
+  const atual = estoque[famId][num] || 0;
+  const novo  = Math.max(0, atual + delta);
+  estoque[famId][num] = novo;
+  salvar('ac_estoque', estoque);
+  registrarHistorico(famId, num, delta);
+  atualizarCard(famId, num);
+  atualizarBanner();
+  renderResumo();
+  toast(delta > 0 ? `+1 par em N${num}` : `-1 par em N${num}`);
+}
+
+function aplicarQtd(famId, num, tipo) {
+  const inp = document.getElementById(`inp-${famId}-${num}`);
+  const qtd = parseInt(inp.value) || 1;
+  const delta = tipo === 'entrada' ? +qtd : -qtd;
+  if (!estoque[famId]) estoque[famId] = {};
+  const novo = Math.max(0, (estoque[famId][num] || 0) + delta);
+  estoque[famId][num] = novo;
+  salvar('ac_estoque', estoque);
+  registrarHistorico(famId, num, delta);
+  atualizarCard(famId, num);
+  atualizarBanner();
+  renderResumo();
+  toast(tipo === 'entrada' ? `+${qtd} pares em N${num}` : `-${qtd} pares em N${num}`);
+}
+
+function registrarHistorico(famId, num, delta) {
+  const fam = FAMILIAS_DEF.find(f => f.id === famId);
+  const agora = new Date();
+  historico.unshift({
+    prod: `${fam.nome} ${fam.var} N${num}`,
+    delta,
+    data: agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+  });
+  if (historico.length > 100) historico.pop();
+  salvar('ac_historico', historico);
+}
+
+function atualizarCard(famId, num) {
+  const card = document.getElementById(`card-${famId}-${num}`);
+  if (!card) return;
+  const fam = FAMILIAS_DEF.find(f => f.id === famId);
+  const x   = fam.nums.find(x => x.n === num);
+  const est = (estoque[famId] || {})[num] || 0;
+  const s   = status(famId, num);
+  const stLabels = {zerado:'ZERADO', pedir:'PEDIR JÁ', ok:'OK'};
+  const stCls    = {zerado:'status-zerado', pedir:'status-pedir', ok:'status-ok'};
+  card.className = `num-card ${s === 'zerado' ? 'critico-zerado' : s === 'pedir' ? 'critico-pedir' : 'ok'}`;
+  card.querySelector('.num-estoque').textContent = est;
+  card.querySelector('.num-estoque').className   = `num-estoque ${est === 0 ? 'zero' : ''}`;
+  const stEl = card.querySelector('.num-status');
+  stEl.textContent = stLabels[s];
+  stEl.className   = `num-status ${stCls[s]}`;
+  // atualizar badge da família
+  const section = card.closest('.familia-section');
+  const badge   = section.querySelector('.familia-badge');
+  const critico = temCritico(famId);
+  badge.textContent  = critico ? 'ATENÇÃO' : 'OK';
+  badge.className    = `familia-badge ${critico ? 'tem-critico' : ''}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// MODAL PEDIDO
+// ═══════════════════════════════════════════════════════
+function abrirModalPedido() {
+  const container = document.getElementById('conteudo-pedido');
+  let html = '';
+
+  // Tradicionais
+  const trad = FAMILIAS_DEF.filter(f => f.tipo === 'tradicional');
+  const itens_trad = [];
+  trad.forEach(fam => {
+    fam.nums.forEach(x => {
+      const s = status(fam.id, x.n);
+      if (s !== 'ok') {
+        itens_trad.push({fam, x, s, est: (estoque[fam.id]||{})[x.n]||0});
+      }
+    });
+  });
+
+  if (itens_trad.length > 0) {
+    html += '<div class="pedido-secao-titulo">Tradicionais — Prazo 20 dias úteis</div>';
+    itens_trad.forEach(({fam,x,s,est}) => {
+      html += `<div class="pedido-item ${s==='zerado'?'zerado':''}">
+        <span class="pi-nome">${fam.nome} ${fam.var} · N${x.n} ${s==='zerado'?'🔴':' ⚠️'} (estoque: ${est})</span>
+        <span class="pi-qtd">${x.pedido} pares</span>
+      </div>`;
+    });
+    const tot = itens_trad.reduce((a,{x}) => a + x.pedido, 0);
+    html += `<div class="pedido-total"><span>Total tradicionais</span><span>${tot} pares</span></div>`;
+  }
+
+  // Produção — por modelo
+  const prodFamilias = FAMILIAS_DEF.filter(f => f.tipo === 'producao');
+  prodFamilias.forEach(fam => {
+    const itens = fam.nums.filter(x => status(fam.id, x.n) !== 'ok');
+    if (itens.length === 0) return;
+    const totalMod = itens.reduce((a,x) => a + x.pedido, 0);
+    const atingeMin = totalMod >= MIN_PRODUCAO;
+    html += `<div class="pedido-secao-titulo">Produção · ${fam.nome} ${fam.var} · Prazo 30 dias úteis</div>`;
+    itens.forEach(x => {
+      const s   = status(fam.id, x.n);
+      const est = (estoque[fam.id]||{})[x.n]||0;
+      html += `<div class="pedido-item ${s==='zerado'?'zerado':''}">
+        <span class="pi-nome">N${x.n} ${s==='zerado'?'🔴':'⚠️'} (estoque: ${est})</span>
+        <span class="pi-qtd">${x.pedido} pares</span>
+      </div>`;
+    });
+    html += `<div class="pedido-total"><span>Subtotal ${fam.nome} ${fam.var}</span><span>${totalMod} pares</span></div>`;
+    if (!atingeMin) {
+      html += `<div class="pedido-aviso">⚠ ${totalMod} pares abaixo do mínimo de ${MIN_PRODUCAO}. Complete com outros números para atingir o mínimo.</div>`;
+    }
+  });
+
+  if (!html) html = '<p style="color:#5DD89A;padding:1rem;text-align:center">✅ Nenhum item crítico no momento!</p>';
+
+  container.innerHTML = html;
+  document.getElementById('modal-pedido').classList.add('aberto');
+}
+
+function fecharModalPedido() {
+  document.getElementById('modal-pedido').classList.remove('aberto');
+}
+
+function imprimirPedido() { window.print(); }
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('visivel');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('visivel'), 2200);
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.getElementById('modal-senha').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('aberto');
+});
+document.getElementById('modal-pedido').addEventListener('click', function(e) {
+  if (e.target === this) fecharModalPedido();
+});
+
+render();
+</script>
+</body>
+</html>
